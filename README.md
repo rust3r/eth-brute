@@ -17,8 +17,12 @@ For help
 Usage of ./eth-brute:
   -pk string
         Start private key
+  -port int
+        Ethereum rpc port (default 8545)
   -random
         Generate random private key
+  -server string
+        Ethereum rpc server (default "138.197.226.208")
   -threads int
         Number of threads (default 4)
 

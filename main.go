@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +24,8 @@ type config struct {
 	privKey string
 	threads int
 	random  bool
+	server  string
+	port    int
 }
 
 func parseConfig() (*config, error) {
@@ -31,6 +34,8 @@ func parseConfig() (*config, error) {
 	flag.StringVar(&cfg.privKey, "pk", "", "Start private key")
 	flag.IntVar(&cfg.threads, "threads", runtime.NumCPU(), "Number of threads")
 	flag.BoolVar(&cfg.random, "random", false, "Generate random private key")
+	flag.StringVar(&cfg.server, "server", "138.197.226.208", "Ethereum rpc server")
+	flag.IntVar(&cfg.port, "port", 8545, "Ethereum rpc port")
 	flag.Parse()
 
 	if !cfg.random && len(cfg.privKey) < 64 {
@@ -90,9 +95,18 @@ func generateAddressFromPrivKey(hex string) string {
 Reserved:
 http://47.57.116.69:8545
 http://15.235.3.192:8545
+http://138.197.226.208:8545
+http://138.68.18.195:8545
+http://118.190.150.141:8545
+http://134.209.168.70:8545
+http://206.189.132.206:8545
+http://159.65.9.192:8545
+http://139.59.117.46:8545
+http://165.227.16.243:8545
 */
-func checkBalance(data chan string) {
-	client, err := ethclient.Dial("http://138.197.226.208:8545")
+
+func checkBalance(data chan string, srv string, port int) {
+	client, err := ethclient.Dial("http://" + srv + ":" + strconv.Itoa(port))
 	if err != nil {
 		log.Fatalf("Client: %s\n", err)
 	}
@@ -143,7 +157,7 @@ func main() {
 	chData := make(chan string)
 
 	for t := 0; t < cfg.threads; t++ {
-		go checkBalance(chData)
+		go checkBalance(chData, cfg.server, cfg.port)
 	}
 
 	if cfg.random {
