@@ -5,11 +5,14 @@ import (
 	"crypto/ecdsa"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"math/big"
+	"math/rand"
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -19,6 +22,7 @@ import (
 type config struct {
 	privKey string
 	threads int
+	random  bool
 }
 
 func parseConfig() (*config, error) {
@@ -26,16 +30,17 @@ func parseConfig() (*config, error) {
 
 	flag.StringVar(&cfg.privKey, "pk", "", "Start private key")
 	flag.IntVar(&cfg.threads, "threads", runtime.NumCPU(), "Number of threads")
+	flag.BoolVar(&cfg.random, "random", false, "Generate random private key")
 	flag.Parse()
 
-	if len(cfg.privKey) < 64 {
+	if !cfg.random && len(cfg.privKey) < 64 {
 		return nil, fmt.Errorf("private key length must be large then 64: '%s'", cfg.privKey)
 	}
 
 	return &cfg, nil
 }
 
-func generateNewPrivKey(hex string) string {
+func generateNextPrivKey(hex string) string {
 	sh := strings.Split(hex, "")
 	possible := "0123456789abcdef"
 
@@ -49,6 +54,20 @@ func generateNewPrivKey(hex string) string {
 		}
 	}
 	return strings.Join(sh, "")
+}
+
+func generateRandomPrivKey() string {
+	rand.Seed(time.Now().UnixNano())
+
+	possible := "0123456789abcdef"
+	var randHex string
+
+	for c := 0; c < 64; c++ {
+		n := rand.Intn(16)
+		randHex += string(possible[n])
+	}
+
+	return randHex
 }
 
 func generateAddressFromPrivKey(hex string) string {
@@ -67,8 +86,9 @@ func generateAddressFromPrivKey(hex string) string {
 	return address
 }
 
+// http://47.57.116.69:8545
 func checkBalance(data chan string) {
-	client, err := ethclient.Dial("http://185.197.160.119:8545")
+	client, err := ethclient.Dial("http://138.197.226.208:8545")
 	if err != nil {
 		log.Fatalf("Client: %s\n", err)
 	}
@@ -77,10 +97,16 @@ func checkBalance(data chan string) {
 	for {
 		creds := <-data
 		addr := strings.Split(creds, ":")[1]
+
 		account := common.HexToAddress(addr)
 		balance, err := client.BalanceAt(context.Background(), account, nil)
+
 		if err != nil {
-			log.Fatalf("Check balance: %s %v\n", creds, err)
+			if err == io.EOF {
+				log.Fatalf("Check balance: %s %v\n", creds, err)
+			}
+			log.Printf("Check balance: %s %v\n", creds, err)
+			continue
 		}
 
 		if balance.Cmp(big.NewInt(0)) != 0 {
@@ -90,21 +116,6 @@ func checkBalance(data chan string) {
 		fmt.Println(addr, balance)
 	}
 }
-
-// func testCli(address string) {
-// 	client, err := ethclient.Dial("http://185.197.160.119:8545")
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	defer client.Close()
-
-// 	account := common.HexToAddress(address)
-// 	balance, err := client.BalanceAt(context.Background(), account, nil)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	fmt.Println(balance)
-// }
 
 func writeToFound(text string, path string) {
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0655)
@@ -131,13 +142,18 @@ func main() {
 		go checkBalance(chData)
 	}
 
-	pk := cfg.privKey
-
-	for {
-		pk = generateNewPrivKey(pk)
-		addr := generateAddressFromPrivKey(pk)
-		chData <- fmt.Sprintf("%s:%s", pk, addr)
+	if cfg.random {
+		for {
+			pk := generateRandomPrivKey()
+			addr := generateAddressFromPrivKey(pk)
+			chData <- fmt.Sprintf("%s:%s", pk, addr)
+		}
+	} else {
+		pk := cfg.privKey
+		for {
+			pk = generateNextPrivKey(pk)
+			addr := generateAddressFromPrivKey(pk)
+			chData <- fmt.Sprintf("%s:%s", pk, addr)
+		}
 	}
-
-	// testCli("0xDa1bDd3845203d8108aD24cc9374F2D07E2FEA14")
 }
