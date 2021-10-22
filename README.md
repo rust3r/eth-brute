@@ -16,12 +16,15 @@ For help
 
 Usage of ./eth-brute:
   -pk string
-    	Start private key
+        Start private key
+  -random
+        Generate random private key
   -threads int
-    	Number of threads (default 4)
+        Number of threads (default 4)
 
 ```
-Example
+Examples
 ```
 ./eth-brute -threads 50 -pk 1206b75e20883f695a49bbabd1f26e5d30afb75e4a9e3989a89d779d4a3a1c92
+./eth-brute -threads 50 -random
 ```
