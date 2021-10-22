@@ -86,7 +86,11 @@ func generateAddressFromPrivKey(hex string) string {
 	return address
 }
 
-// http://47.57.116.69:8545
+/*
+Reserved:
+http://47.57.116.69:8545
+http://15.235.3.192:8545
+*/
 func checkBalance(data chan string) {
 	client, err := ethclient.Dial("http://138.197.226.208:8545")
 	if err != nil {
