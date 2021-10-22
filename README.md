@@ -1,6 +1,6 @@
 # eth-brute
 
-## Installing
+## Compile from binaries
 
 ```
 git clone git@github.com:rust3r/eth-brute.git
