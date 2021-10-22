@@ -32,4 +32,7 @@ Examples
 ./eth-brute -threads 50 -pk 1206b75e20883f695a49bbabd1f26e5d30afb75e4a9e3989a89d779d4a3a1c92
 ./eth-brute -threads 50 -random
 ```
-P.S: Spare servers can be found in the source code
+Spare servers can be found in the source code
+
+## Donation
+ [![Donate](https://brianmacdonald.github.io/Ethonate/svg/eth-donate-blue.svg)](https://brianmacdonald.github.io/Ethonate/address#0xCE798299aE1963dB012C07C0efaA43Ceee524880)
