@@ -28,6 +28,10 @@ type config struct {
 	port    int
 }
 
+const (
+	POSSIBLE = "0123456789abcdef"
+)
+
 func parseConfig() (*config, error) {
 	var cfg config
 
@@ -47,14 +51,13 @@ func parseConfig() (*config, error) {
 
 func generateNextPrivKey(hex string) string {
 	sh := strings.Split(hex, "")
-	possible := "0123456789abcdef"
 
 	for i := len(hex) - 1; i >= 0; i-- {
-		point := strings.Index(possible, sh[i])
+		point := strings.Index(POSSIBLE, sh[i])
 		if point == 15 {
 			sh[i] = "0"
 		} else {
-			sh[i] = string(possible[point+1])
+			sh[i] = string(POSSIBLE[point+1])
 			break
 		}
 	}
@@ -64,12 +67,11 @@ func generateNextPrivKey(hex string) string {
 func generateRandomPrivKey() string {
 	rand.Seed(time.Now().UnixNano())
 
-	possible := "0123456789abcdef"
 	var randHex string
 
 	for c := 0; c < 64; c++ {
 		n := rand.Intn(16)
-		randHex += string(possible[n])
+		randHex += string(POSSIBLE[n])
 	}
 
 	return randHex
