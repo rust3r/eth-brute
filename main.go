@@ -133,7 +133,7 @@ func checkBalance(data chan string, srv string, port int) {
 			data := creds + "\n"
 			writeToFound(data, "found.txt")
 		}
-		fmt.Println(addr, balance)
+		fmt.Println(creds, balance)
 	}
 }
 
