@@ -3,7 +3,7 @@
 Bruteforce with sequential and random private keys
 
 
-## Compile from binaries
+## Compile from source
 
 ```
 git clone git@github.com:rust3r/eth-brute.git
