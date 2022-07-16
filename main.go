@@ -38,7 +38,7 @@ func parseConfig() (*config, error) {
 	flag.StringVar(&cfg.privKey, "pk", "", "Start private key")
 	flag.IntVar(&cfg.threads, "threads", runtime.NumCPU(), "Number of threads")
 	flag.BoolVar(&cfg.random, "random", false, "Generate random private key")
-	flag.StringVar(&cfg.server, "server", "138.197.226.208", "Ethereum rpc server")
+	flag.StringVar(&cfg.server, "server", "138.68.18.195", "Ethereum rpc server")
 	flag.IntVar(&cfg.port, "port", 8545, "Ethereum rpc port")
 	flag.Parse()
 
