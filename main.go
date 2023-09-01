@@ -38,7 +38,7 @@ func parseConfig() (*config, error) {
 	flag.StringVar(&cfg.privKey, "pk", "", "Start private key")
 	flag.IntVar(&cfg.threads, "threads", runtime.NumCPU(), "Number of threads")
 	flag.BoolVar(&cfg.random, "random", false, "Generate random private key")
-	flag.StringVar(&cfg.server, "server", "154.48.217.250", "Ethereum rpc server")
+	flag.StringVar(&cfg.server, "server", "202.61.239.89", "Ethereum rpc server")
 	flag.IntVar(&cfg.port, "port", 8545, "Ethereum rpc port")
 	flag.Parse()
 
@@ -105,6 +105,7 @@ http://206.189.132.206:8545
 http://159.65.9.192:8545
 http://139.59.117.46:8545
 http://165.227.16.243:8545
+202.61.239.89:8545 NEW!
 */
 
 func checkBalance(data chan string, srv string, port int) {
