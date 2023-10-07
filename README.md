@@ -29,6 +29,8 @@ For help:
 ./eth-brute -h
 
 Usage of ./eth-brute:
+  -brain string
+        Password list
   -pk string
         Start private key
   -port int
@@ -36,7 +38,7 @@ Usage of ./eth-brute:
   -random
         Generate random private key
   -server string
-        Ethereum rpc server (default "138.197.226.208")
+        Ethereum rpc server (default "202.61.239.89")
   -threads int
         Number of threads (default 4)
 ```
@@ -46,6 +48,7 @@ Usage:
 ```
 ./eth-brute -threads 50 -pk 1206b75e20883f695a49bbabd1f26e5d30afb75e4a9e3989a89d779d4a3a1c92
 ./eth-brute -threads 50 -random
+./eth-brute -threads 50 -brain passwords_example.txt
 ```
 
 Spare servers can be found in the source code
