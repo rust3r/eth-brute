@@ -1,6 +1,6 @@
 # eth-brute
 
-Bruteforce with sequential and random private keys
+Bruteforce with sequential, random private keys, brainwallets
 
 
 ## Compile from source
