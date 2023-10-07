@@ -44,6 +44,10 @@ const (
 var (
 	counter uint64 = 0
 	wg      sync.WaitGroup
+	usage   = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 )
 
 func parseConfig() *config {
@@ -265,13 +269,11 @@ func main() {
 			addr := generateAddressFromPrivKey(pk)
 			chData <- fmt.Sprintf("%s:%s", pk, addr)
 		}
-	} else {
+	} else if cfg.brain != "" {
 		passList, err := getPasswordList(cfg.brain)
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		// chData := make(chan string)
 
 		for i := 0; i < int(cfg.threads); i++ {
 			wg.Add(1)
@@ -283,5 +285,7 @@ func main() {
 		}
 		close(chData)
 		wg.Wait()
+	} else {
+		usage()
 	}
 }
