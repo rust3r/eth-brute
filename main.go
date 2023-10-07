@@ -142,7 +142,7 @@ func checkBalance(data chan string, srv string, port int) {
 			writeToFound(data, "found.txt")
 		}
 		atomic.AddUint64(&counter, 1)
-		fmt.Println(creds, balance)
+		fmt.Printf("Creds: %s Balance: %d Counter: %d\n", creds, balance, atomic.LoadUint64(&counter))
 	}
 }
 
