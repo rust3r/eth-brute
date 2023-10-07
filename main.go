@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/big"
 	"math/rand"
@@ -65,7 +64,7 @@ func parseConfig() *config {
 }
 
 func getPasswordList(path string) ([]string, error) {
-	f, err := ioutil.ReadFile(path)
+	f, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -105,12 +104,12 @@ func generateNextPrivKey(hex string) string {
 }
 
 func generateRandomPrivKey() string {
-	rand.Seed(time.Now().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	var randHex string
 
 	for c := 0; c < 64; c++ {
-		n := rand.Intn(16)
+		n := r.Intn(16)
 		randHex += string(POSSIBLE[n])
 	}
 
