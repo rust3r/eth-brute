@@ -52,4 +52,4 @@ Spare servers can be found in the source code
 
 
 ## Donation
- [![Donate](https://brianmacdonald.github.io/Ethonate/svg/eth-donate-blue.svg)](https://brianmacdonald.github.io/Ethonate/address#0xCE798299aE1963dB012C07C0efaA43Ceee524880)
+ Eth: 0x7630b188630841ce9c1e1eDa7a173FC344458f62
