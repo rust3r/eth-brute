@@ -10,9 +10,12 @@ import (
 	"math/big"
 	"math/rand"
 	"os"
+	"os/signal"
 	"runtime"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -30,6 +33,10 @@ type config struct {
 
 const (
 	POSSIBLE = "0123456789abcdef"
+)
+
+var (
+	counter uint64 = 0
 )
 
 func parseConfig() (*config, error) {
@@ -133,6 +140,7 @@ func checkBalance(data chan string, srv string, port int) {
 			data := creds + "\n"
 			writeToFound(data, "found.txt")
 		}
+		atomic.AddUint64(&counter, 1)
 		fmt.Println(creds, balance)
 	}
 }
@@ -150,6 +158,10 @@ func writeToFound(text string, path string) {
 	}
 }
 
+func cleanup() {
+	fmt.Println("Total addresses:", atomic.LoadUint64(&counter))
+}
+
 func main() {
 	cfg, err := parseConfig()
 	if err != nil {
@@ -157,6 +169,15 @@ func main() {
 	}
 
 	chData := make(chan string)
+	chExit := make(chan os.Signal)
+
+	signal.Notify(chExit, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-chExit
+		cleanup()
+		os.Exit(0)
+	}()
 
 	for t := 0; t < cfg.threads; t++ {
 		go checkBalance(chData, cfg.server, cfg.port)
